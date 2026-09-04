@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>프리미엄 AI 맞춤형 영화 추천 시스템</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700;900&family=Pretendard:wght@400;500;600;700&family=Oswald:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-main:#0b0b0a;
+    --bg-card:#161513;
+    --bg-panel:#1d1b18;
+    --line:#332f28;
+    --red:#b8283f;
+    --red-deep:#8f1e30;
+    --gold:#c9a24b;
+    --gold-soft:#e8d8ab;
+    --text:#f3ede0;
+    --muted:#93897a;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(ellipse at top, #17140f 0%, var(--bg-main) 55%),
+      var(--bg-main);
+    color:var(--text);
+    font-family:'Pretendard','Noto Sans KR',sans-serif;
+    min-height:100vh;
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    padding:48px 20px 80px;
+  }
+  .reel-frame{
+    width:100%;
+    max-width:760px;
+  }
+  .marquee{
+    text-align:center;
+    margin-bottom:28px;
+  }
+  .marquee .kicker{
+    font-family:'Oswald',sans-serif;
+    letter-spacing:.32em;
+    font-size:11px;
+    color:var(--gold);
+    margin-bottom:10px;
+  }
+  .marquee h1{
+    font-family:'Noto Serif KR',serif;
+    font-weight:900;
+    font-size:clamp(28px,5vw,40px);
+    margin:0;
+    color:var(--text);
+    line-height:1.25;
+  }
+  .marquee h1 em{
+    font-style:normal;
+    color:var(--red);
+  }
+  .film-strip{
+    height:14px;
+    background: repeating-linear-gradient(90deg, #000 0 10px, transparent 10px 22px);
+    opacity:.5;
+    margin:22px 0 0;
+    border-radius:2px;
+  }
+
+  .card{
+    background:var(--bg-card);
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:44px 46px;
+    position:relative;
+    box-shadow:0 30px 60px -30px rgba(0,0,0,.7);
+  }
+  .card::before, .card::after{
+    content:"";
+    position:absolute;
+    left:0; right:0;
+    height:1px;
+    background: repeating-linear-gradient(90deg, var(--gold) 0 6px, transparent 6px 16px);
+    opacity:.55;
+  }
+  .card::before{ top:0; }
+  .card::after{ bottom:0; }
+
+  .step-label{
+    font-family:'Oswald',sans-serif;
+    letter-spacing:.18em;
+    font-size:12px;
+    color:var(--gold);
+    margin-bottom:6px;
+  }
+  .step-title{
+    font-family:'Noto Serif KR',serif;
+    font-weight:700;
+    font-size:24px;
+    margin:0 0 30px;
+    color:var(--text);
+  }
+  .step-sub{
+    color:var(--muted);
+    font-size:13.5px;
+    margin:-20px 0 26px;
+  }
+
+  /* --- Step 1 --- */
+  .field-row{
+    display:flex;
+    align-items:center;
+    gap:22px;
+    padding:18px 0;
+    border-bottom:1px solid var(--line);
+  }
+  .field-row:last-of-type{ border-bottom:none; }
+  .field-name{
+    width:64px;
+    flex-shrink:0;
+    color:var(--muted);
+    font-size:13px;
+    font-weight:600;
+  }
+  .pill-group{ display:flex; gap:10px; }
+  .pill{
+    padding:9px 22px;
+    border-radius:999px;
+    border:1px solid var(--line);
+    background:transparent;
+    color:var(--muted);
+    font-size:14px;
+    cursor:pointer;
+    transition:all .15s ease;
+  }
+  .pill.active{
+    background:var(--red);
+    border-color:var(--red);
+    color:#fff;
+  }
+  .age-input{
+    background:var(--bg-panel);
+    border:1px solid var(--line);
+    border-radius:4px;
+    color:var(--text);
+    font-size:15px;
+    padding:10px 16px;
+    width:120px;
+    text-align:center;
+    font-family:'Pretendard',sans-serif;
+  }
+  .age-input:focus{ outline:none; border-color:var(--gold); }
+  .error-msg{
+    color:var(--red);
+    font-size:12.5px;
+    margin-top:10px;
+    min-height:16px;
+  }
+
+  .btn{
+    font-family:'Pretendard',sans-serif;
+    font-weight:600;
+    font-size:15px;
+    padding:14px 26px;
+    border-radius:4px;
+    border:none;
+    cursor:pointer;
+    transition:transform .12s ease, background .15s ease;
+  }
+  .btn:active{ transform:scale(.98); }
+  .btn-primary{ background:var(--red); color:#fff; }
+  .btn-primary:hover{ background:var(--red-deep); }
+  .btn-ghost{ background:var(--bg-panel); color:var(--text); border:1px solid var(--line); }
+  .btn-ghost:hover{ background:#26221d; }
+  .btn-block{ width:100%; margin-top:36px; }
+  .btn-row{ display:flex; gap:14px; margin-top:30px; }
+  .btn-row .btn{ flex:1; }
+
+  /* --- Step 2 --- */
+  .genre-block{
+    background:var(--bg-panel);
+    border:1px solid var(--line);
+    border-radius:5px;
+    padding:20px 22px;
+    margin-bottom:14px;
+  }
+  .genre-q{
+    font-size:15px;
+    font-weight:600;
+    margin-bottom:14px;
+  }
+  .genre-q .g-name{ color:var(--gold); }
+  .scale{
+    display:flex;
+    gap:8px;
+  }
+  .scale-opt{
+    flex:1;
+    text-align:center;
+    padding:10px 4px;
+    border-radius:4px;
+    border:1px solid var(--line);
+    background:transparent;
+    color:var(--muted);
+    font-size:12.5px;
+    cursor:pointer;
+    transition:all .15s ease;
+  }
+  .scale-opt.active{
+    background:var(--red);
+    color:#fff;
+    border-color:var(--red);
+  }
+
+  /* --- Step 3 --- */
+  .progress-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:18px;
+  }
+  .progress-code{
+    font-family:'Oswald',sans-serif;
+    color:var(--muted);
+    font-size:13px;
+    letter-spacing:.06em;
+  }
+  .genre-tag{
+    font-family:'Oswald',sans-serif;
+    color:var(--gold);
+    font-size:12px;
+    letter-spacing:.1em;
+  }
+  .poster-wrap{
+    width:220px;
+    height:308px;
+    margin:0 auto 22px;
+    border-radius:6px;
+    overflow:hidden;
+    background:var(--bg-panel);
+    border:1px solid var(--line);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    box-shadow:0 20px 40px -18px rgba(0,0,0,.8);
+  }
+  .poster-wrap img{
+    width:100%; height:100%; object-fit:cover;
+  }
+  .poster-fallback{
+    text-align:center;
+    color:var(--muted);
+    font-size:13px;
+    padding:0 16px;
+  }
+  .poster-fallback .icon{ font-size:34px; display:block; margin-bottom:10px; }
+  .movie-title{
+    text-align:center;
+    font-family:'Noto Serif KR',serif;
+    font-weight:700;
+    font-size:23px;
+    margin:0 0 6px;
+  }
+  .movie-sub{
+    text-align:center;
+    color:var(--muted);
+    font-size:13px;
+    margin:0 0 22px;
+  }
+
+  /* --- Step 4 --- */
+  .result-kicker{
+    text-align:center;
+    font-family:'Oswald',sans-serif;
+    letter-spacing:.24em;
+    font-size:11px;
+    color:var(--gold);
+    margin-bottom:10px;
+  }
+  .result-title{
+    text-align:center;
+    font-family:'Noto Serif KR',serif;
+    font-weight:700;
+    font-size:22px;
+    margin:0 0 34px;
+  }
+  .result-grid{
+    display:flex;
+    gap:22px;
+    justify-content:center;
+    flex-wrap:wrap;
+  }
+  .ticket{
+    width:170px;
+    background:var(--bg-panel);
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:14px;
+    text-align:center;
+    position:relative;
+  }
+  .ticket .poster-wrap{
+    width:100%; height:230px; margin-bottom:14px;
+  }
+  .ticket-title{
+    font-weight:600;
+    font-size:14.5px;
+    line-height:1.4;
+    margin-bottom:4px;
+  }
+  .ticket-genre{
+    color:var(--gold);
+    font-size:11.5px;
+    letter-spacing:.05em;
+  }
+  .empty-note{
+    text-align:center;
+    color:var(--muted);
+    padding:30px 0;
+    line-height:1.7;
+  }
+
+  /* --- Easter egg overlay --- */
+  .scare-overlay{
+    position:fixed; inset:0;
+    background:#000;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:999;
+    cursor:none;
+  }
+  .scare-overlay.show{ display:flex; }
+  .scare-overlay img{ max-width:70%; max-height:70%; }
+  .scare-text{
+    font-family:'Noto Serif KR',serif;
+    color:var(--red);
+    font-size:min(12vw,80px);
+    font-weight:900;
+    letter-spacing:.1em;
+  }
+
+  @media (max-width:520px){
+    .card{ padding:30px 22px; }
+    .field-row{ flex-direction:column; align-items:flex-start; gap:12px; }
+    .scale{ flex-wrap:wrap; }
+    .scale-opt{ flex:1 1 30%; }
+  }
+</style>
+</head>
+<body>
+
+<div class="reel-frame">
+  <div class="marquee">
+    <div class="kicker">NOW CASTING YOUR NEXT FILM</div>
+    <h1>프리미엄 AI 맞춤형<br><em>영화 추천</em> 시스템</h1>
+  </div>
+
+  <div class="card" id="app-root"></div>
+
+  <div class="film-strip"></div>
+</div>
+
+<div class="scare-overlay" id="scare-overlay">
+  <img id="scare-img" src="" alt="" style="display:none;">
+  <div class="scare-text" id="scare-text" style="display:none;">👻 찾 았 다 👻</div>
+</div>
+
+<script>
+/* ==========================================
+   1. 영화 데이터
+   ========================================== */
+const MOVIES_MAIN = {
+  "로맨스": ["러브레터","너의 이름은","너의 췌장을 먹고 싶어","너의 결혼식","클래식","건축학개론","타이타닉","내가 널 사랑할 수 없는 10가지 이유","미녀는 괴로워"],
+  "액션": ["메이저","존윅","노인을 위한 나라는 없다","블러드 다이아몬드","킬빌","탑건","마이너","스파이","굿타임","써클","드레드","마이웨이"],
+  "코미디": ["세 얼간이","퀸카로 살아남는 법","정직한 후보","좀비랜드","지구를 지켜라","마틸다","트루먼쇼","악마는 프라다를 입는다","7번방의 선물"],
+  "SF": ["그래비티","혹성탈출","인천스텔라","평행이론_ 도플갱어 살인","에반게리온","공각기동대","월E","전독시","대홍수","가타카","맨인블랙","제 5원소","착신아리"],
+  "호러": ["유전","미드소마","컨저링","나이트테러","불신지옥","신비아파트 극장판","코렐라인","몬스터 패밀리","호커스 포커스","유령신부","팀 버튼의 크리스마스 악몽","곰돌이 푸_ 피와 꿀","바바둑","다크 앤드 위키드"]
+};
+
+const MOVIES_SURVEY = {
+  "로맨스": ["라라랜드","플립","어바웃타임"],
+  "액션": ["다크나이트","범죄도시","매트릭스"],
+  "코미디": ["극한직업","엑시트","나 홀로 집에"],
+  "SF": ["인터스텔라","설국열차","가디언즈 오브 갤럭시"],
+  "호러": ["곤지암","IT","애나벨"]
+};
+
+const M19 = ["타이타닉","존윅","노인을 위한 나라는 없다","블러드 다이아몬드","킬빌","드레드","좀비랜드","에반게리온","착신아리","미드소마","곰돌이 푸_ 피와 꿀"];
+
+const GENRES = Object.keys(MOVIES_MAIN);
+
+/* ==========================================
+   2. 상태
+   ========================================== */
+let state = {
+  gender: "man",
+  age: "",
+  genreVars: Object.fromEntries(GENRES.map(g => [g, 3])),
+  genreScores: Object.fromEntries(GENRES.map(g => [g, 0])),
+  surveyQueue: [],
+  currentIndex: 0,
+  movieScore: 3
+};
+
+const root = document.getElementById('app-root');
+
+function posterSrc(title){
+  return 'images/' + encodeURIComponent(title + '.png');
+}
+
+function posterImgHTML(title, extraClass){
+  return `<div class="poster-wrap ${extraClass||''}">
+      <img src="${posterSrc(title)}" alt="${title}"
+           onerror="this.parentElement.innerHTML='<div class=\\'poster-fallback\\'><span class=\\'icon\\'>🎬</span>${title}<br>포스터 없음</div>'">
+    </div>`;
+}
+
+/* ==========================================
+   STEP 1
+   ========================================== */
+function renderStep1(){
+  root.innerHTML = `
+    <div class="step-label">STEP 1</div>
+    <h2 class="step-title">개인 맞춤 정보 설정</h2>
+
+    <div class="field-row">
+      <div class="field-name">성별</div>
+      <div class="pill-group">
+        <button class="pill ${state.gender==='man'?'active':''}" data-gender="man">남성</button>
+        <button class="pill ${state.gender==='woman'?'active':''}" data-gender="woman">여성</button>
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field-name">나이</div>
+      <input class="age-input" id="age-input" type="number" min="1" max="120" placeholder="예: 25" value="${state.age}">
+    </div>
+
+    <div class="error-msg" id="error-msg"></div>
+
+    <button class="btn btn-primary btn-block" id="step1-next">취향 분석 시작 →</button>
+  `;
+
+  root.querySelectorAll('[data-gender]').forEach(btn=>{
+    btn.onclick = () => {
+      state.gender = btn.dataset.gender;
+      renderStep1();
+    };
+  });
+
+  document.getElementById('step1-next').onclick = () => {
+    const val = document.getElementById('age-input').value;
+    const age = parseInt(val, 10);
+    if (!val || isNaN(age) || age <= 0 || age > 120){
+      document.getElementById('error-msg').textContent = '올바른 나이를 숫자로 정확하게 입력해 주세요. (1 ~ 120)';
+      return;
+    }
+    state.age = age;
+    renderStep2();
+  };
+}
+
+/* ==========================================
+   STEP 2
+   ========================================== */
+const SCORE_WORDS = {1:"관심 없어요",2:"별로 안 좋아해요",3:"그냥 그래요",4:"좋아해요",5:"사랑해요"};
+
+function renderStep2(){
+  root.innerHTML = `
+    <div class="step-label">STEP 2</div>
+    <h2 class="step-title" style="margin-bottom:6px;">당신의 장르 취향을 분석합니다</h2>
+    <p class="step-sub">각 문항을 읽고 평소 본인의 선호도에 가장 가까운 상태를 선택해 주세요.</p>
+    <div id="genre-blocks"></div>
+    <button class="btn btn-primary btn-block" id="step2-next">장르 저장 및 영화 상세 평가 이동 →</button>
+  `;
+
+  const container = document.getElementById('genre-blocks');
+  GENRES.forEach((genre, i) => {
+    const block = document.createElement('div');
+    block.className = 'genre-block';
+    block.innerHTML = `
+      <div class="genre-q">Q${i+1}. 평소에 [<span class="g-name">${genre}</span>] 장르의 영화를 얼마나 즐겨 보시나요?</div>
+      <div class="scale">
+        ${Object.entries(SCORE_WORDS).map(([score,word]) => `
+          <button class="scale-opt ${state.genreVars[genre]==score?'active':''}" data-genre="${genre}" data-score="${score}">${word}</button>
+        `).join('')}
+      </div>
+    `;
+    container.appendChild(block);
+  });
+
+  container.querySelectorAll('.scale-opt').forEach(btn => {
+    btn.onclick = () => {
+      state.genreVars[btn.dataset.genre] = parseInt(btn.dataset.score, 10);
+      renderStep2();
+    };
+  });
+
+  document.getElementById('step2-next').onclick = processStep2;
+}
+
+function processStep2(){
+  GENRES.forEach(g => state.genreScores[g] = state.genreVars[g]);
+
+  if (state.gender === 'man'){
+    state.genreScores['액션'] += 1;
+    state.genreScores['SF'] += 1;
+  } else {
+    state.genreScores['로맨스'] += 1;
+    state.genreScores['호러'] += 1;
+  }
+
+  const sortedGenres = [...GENRES].sort((a,b) => {
+    if (state.genreScores[b] !== state.genreScores[a]) return state.genreScores[b] - state.genreScores[a];
+    return a.localeCompare(b);
+  });
+
+  state.surveyQueue = [];
+  sortedGenres.forEach(genre => {
+    MOVIES_SURVEY[genre].forEach(movie => {
+      if (state.age < 19 && M19.includes(movie)) return;
+      state.surveyQueue.push({title: movie, genre});
+    });
+  });
+
+  state.currentIndex = 0;
+  renderStep3();
+}
+
+/* ==========================================
+   STEP 3
+   ========================================== */
+const MOVIE_WORDS = {1:"재미없어요",2:"내 취향 아니에요",3:"그냥 그래요",4:"재밌어요",5:"인생영화에요"};
+
+function renderStep3(){
+  if (state.currentIndex >= state.surveyQueue.length){
+    renderFinal();
+    return;
+  }
+
+  const current = state.surveyQueue[state.currentIndex];
+  const total = state.surveyQueue.length;
+  state.movieScore = 3;
+
+  root.innerHTML = `
+    <div class="progress-row">
+      <span class="genre-tag">● ${current.genre} 장르 정밀 분석</span>
+      <span class="progress-code">${String(state.currentIndex+1).padStart(2,'0')} / ${String(total).padStart(2,'0')}</span>
+    </div>
+
+    ${posterImgHTML(current.title)}
+
+    <h3 class="movie-title">"${current.title}"</h3>
+    <p class="movie-sub">이 영화에 대한 개인적인 평가는 어떤가요?</p>
+
+    <div class="scale" id="movie-scale">
+      ${Object.entries(MOVIE_WORDS).map(([score,word]) => `
+        <button class="scale-opt ${state.movieScore==score?'active':''}" data-score="${score}">${word}</button>
+      `).join('')}
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-ghost" id="skip-btn">🤔 이 영화 잘 몰라요</button>
+      <button class="btn btn-primary" id="submit-btn">${state.currentIndex < total-1 ? '선택 완료 →' : '📊 결과 분석하기 🏆'}</button>
+    </div>
+  `;
+
+  root.querySelectorAll('#movie-scale .scale-opt').forEach(btn => {
+    btn.onclick = () => {
+      state.movieScore = parseInt(btn.dataset.score, 10);
+      root.querySelectorAll('#movie-scale .scale-opt').forEach(b => b.classList.toggle('active', b===btn));
+    };
+  });
+
+  document.getElementById('skip-btn').onclick = () => {
+    state.currentIndex += 1;
+    renderStep3();
+  };
+
+  document.getElementById('submit-btn').onclick = () => {
+    state.genreScores[current.genre] += state.movieScore;
+    state.currentIndex += 1;
+    renderStep3();
+  };
+}
+
+/* ==========================================
+   STEP 4: 최종 결과
+   ========================================== */
+function renderFinal(){
+  const age = state.age;
+  const maxScore = Math.max(...Object.values(state.genreScores));
+  const topGenres = GENRES.filter(g => state.genreScores[g] === maxScore);
+
+  const pool = [];
+  const seen = new Set();
+  topGenres.forEach(g => {
+    MOVIES_MAIN[g].forEach(m => {
+      if (age < 19 && M19.includes(m)) return;
+      if (!seen.has(m)){
+        seen.add(m);
+        pool.push({title:m, genre:g});
+      }
+    });
+  });
+
+  const sampleSize = Math.min(pool.length, 3);
+  const recommended = sampleShuffle(pool, sampleSize);
+  const genreTitleText = topGenres.join(', ');
+
+  root.innerHTML = `
+    <div class="result-kicker">YOUR TOP PICK RECOMMENDATION</div>
+    <h2 class="result-title">✨ 오직 당신만을 위한 장르 [${genreTitleText}] 추천작 ✨</h2>
+    <div class="result-grid" id="result-grid"></div>
+    <button class="btn btn-ghost btn-block" id="reset-btn">🔄 처음으로 돌아가서 다시 테스트하기</button>
+  `;
+
+  const grid = document.getElementById('result-grid');
+  if (recommended.length === 0){
+    grid.innerHTML = `<div class="empty-note">추천할 수 있는 영화가 없습니다.<br>나이 제한 설정을 확인해 주세요.</div>`;
+  } else {
+    recommended.forEach(item => {
+      const ticket = document.createElement('div');
+      ticket.className = 'ticket';
+      ticket.innerHTML = `
+        ${posterImgHTML(item.title)}
+        <div class="ticket-title">${item.title}</div>
+        <div class="ticket-genre">${item.genre}</div>
+      `;
+      grid.appendChild(ticket);
+    });
+  }
+
+  document.getElementById('reset-btn').onclick = jumpScareAndReset;
+}
+
+function sampleShuffle(arr, n){
+  const copy = [...arr];
+  for (let i = copy.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i+1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy.slice(0, n);
+}
+
+/* ==========================================
+   EASTER EGG
+   ========================================== */
+function jumpScareAndReset(){
+  if ((state.genreScores['호러'] || 0) >= 15){
+    const overlay = document.getElementById('scare-overlay');
+    const img = document.getElementById('scare-img');
+    const text = document.getElementById('scare-text');
+
+    img.src = 'images/ghost.png';
+    img.style.display = 'none';
+    text.style.display = 'none';
+
+    img.onload = () => { img.style.display = 'block'; };
+    img.onerror = () => { text.style.display = 'block'; };
+
+    overlay.classList.add('show');
+    // trigger check in case cached
+    if (img.complete && img.naturalWidth > 0) img.style.display = 'block';
+
+    setTimeout(() => {
+      overlay.classList.remove('show');
+      resetApp();
+    }, 3000);
+  } else {
+    resetApp();
+  }
+}
+
+function resetApp(){
+  state = {
+    gender: "man",
+    age: "",
+    genreVars: Object.fromEntries(GENRES.map(g => [g, 3])),
+    genreScores: Object.fromEntries(GENRES.map(g => [g, 0])),
+    surveyQueue: [],
+    currentIndex: 0,
+    movieScore: 3
+  };
+  renderStep1();
+}
+
+/* init */
+renderStep1();
+</script>
+</body>
+</html>
